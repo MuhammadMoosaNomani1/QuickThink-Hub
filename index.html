@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuickThink Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                bgLight: "#F8FAFC",
+                bgDark: "#0F172A",
+                cardLight: "#FFFFFF",
+                cardDark: "#1E293B",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+      }
+      .dark .glass {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(10px);
+      }
+    </style>
+  </head>
+  <body
+    class="bg-brand-bgLight dark:bg-brand-bgDark text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-300 font-sans flex flex-col items-center justify-center p-4"
+  >
+    <div class="absolute top-6 right-6">
+      <button
+        id="themeToggle"
+        class="p-2 rounded-full bg-slate-200 dark:bg-slate-800 hover:scale-110 transition-transform"
+      >
+        <span class="dark:hidden">🌙</span
+        ><span class="hidden dark:inline">☀️</span>
+      </button>
+    </div>
+
+    <div class="w-full max-w-2xl flex flex-col space-y-6">
+      <div class="text-center space-y-1">
+        <h1
+          class="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent"
+        >
+          QuickThink Hub
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+          One box. Zero friction.
+        </p>
+      </div>
+
+      <div
+        class="relative glass border border-slate-200/70 dark:border-slate-700/70 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] p-2 flex items-center transition-all duration-300 focus-within:ring-2 focus-within:ring-blue-500 focus-within:scale-[1.01]"
+      >
+        <input
+          id="universalInput"
+          type="text"
+          placeholder="Ask, calculate, convert, or plan..."
+          class="w-full bg-transparent px-4 py-3 text-lg outline-none placeholder-slate-400 dark:placeholder-slate-500"
+          autocomplete="off"
+        />
+        <button
+          id="surpriseBtn"
+          title="Surprise Mode"
+          class="p-3 text-lg rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        >
+          🎲
+        </button>
+      </div>
+
+      <div
+        id="memoryContainer"
+        class="flex flex-wrap gap-2 justify-center min-h-[32px]"
+      ></div>
+
+      <div
+        id="responseCard"
+        class="hidden glass border border-slate-200/70 dark:border-slate-700/70 rounded-3xl p-6 shadow-[0_10px_50px_rgba(0,0,0,0.12)] space-y-4 transition-all duration-500 ease-out translate-y-4 opacity-0 scale-[0.98]"
+      >
+        <div
+          class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3"
+        >
+          <span
+            id="modeBadge"
+            class="text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+          >
+            Mode
+          </span>
+          <span class="text-xs text-slate-400">Instant Output</span>
+        </div>
+
+        <div
+          id="outputContent"
+          class="text-base leading-relaxed max-w-none"
+        ></div>
+
+        <div
+          class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-sm"
+        >
+          <div class="flex gap-2">
+            <button
+              id="btnExpand"
+              class="px-3 py-2 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 hover:scale-105 active:scale-95 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-500 transition-all"
+            >
+              ✨ Expand
+            </button>
+            <button
+              id="btnSimplify"
+              class="px-3 py-2 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 hover:scale-105 active:scale-95 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-500 transition-all"
+            >
+              🔍 Simplify
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <button
+              id="btnCopy"
+              class="px-3 py-2 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 hover:scale-105 active:scale-95 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-500 transition-all"
+            >
+              📋 Copy
+            </button>
+            <button
+              id="btnRegen"
+              class="p-2 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 hover:scale-105 active:scale-95 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+            >
+              🔄
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ==========================================
+      // 🔑 CONFIGURATION: GEMINI API SETUP
+      // ==========================================
+
+      const API_URL = "/api/chat";
+
+      const AI_MODEL = "llama-3.3-70b-versatile";
+      // Setup State
+      const memoryKey = "quickthink_history";
+      let rawInputData = "";
+
+      // UI Selectors
+      const input = document.getElementById("universalInput");
+      const card = document.getElementById("responseCard");
+      const output = document.getElementById("outputContent");
+      const badge = document.getElementById("modeBadge");
+      const memoryContainer = document.getElementById("memoryContainer");
+
+      // --- Universal Base HTTP Fetch Handler ---
+      async function callLLM(systemPrompt, userContent) {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: AI_MODEL,
+            messages: [
+              {
+                role: "system",
+                content: systemPrompt,
+              },
+              {
+                role: "user",
+                content: userContent,
+              },
+            ],
+            temperature: 0.45,
+            max_tokens: 700,
+          }),
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(
+            errData.error?.message || `API Error: ${response.status}`,
+          );
+        }
+
+        const data = await response.json();
+
+        return data.choices?.[0]?.message?.content?.trim() || "No response.";
+      } // --- Intent Detection Engine (Identifies Rules / Prompts Dynamically) ---
+
+      function formatNiceCard(text) {
+        const lines = text.split("\n").filter((l) => l.trim() !== "");
+
+        let html = "";
+        let listItems = [];
+
+        function flushList() {
+          if (listItems.length > 0) {
+            html += `
+        <ul class="space-y-2 my-4">
+          ${listItems
+            .map(
+              (item) => `
+            <li class="flex items-start gap-3">
+              <span class="mt-1 text-blue-500">•</span>
+              <span class="text-slate-700 dark:text-slate-300 leading-relaxed">${item}</span>
+            </li>
+          `,
+            )
+            .join("")}
+        </ul>
+      `;
+            listItems = [];
+          }
+        }
+
+        lines.forEach((raw, index) => {
+          let line = raw.trim();
+
+          // REMOVE MARKDOWN HEADING SYMBOLS
+          line = line.replace(/^#{1,6}\s*/, "");
+
+          const safeLine = line.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+          const formattedLine = safeLine.replace(
+            /\*\*(.*?)\*\*/g,
+            "<strong>$1</strong>",
+          );
+
+          // MAIN TITLE
+          if (index === 0 && line.length < 80) {
+            html += `
+      <div class="mb-6">
+        <h2 class="text-3xl font-bold leading-tight bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400 bg-clip-text text-transparent">
+          ${formattedLine}
+        </h2>
+      </div>
+    `;
+            return;
+          }
+
+          // MARKDOWN HEADINGS + CUSTOM HEADINGS
+          if (
+            raw.trim().startsWith("#") ||
+            line.endsWith(":") ||
+            /^[📌⚙️💡🧠✨🚀🔥]/.test(line) ||
+            (line === line.toUpperCase() && line.length < 40)
+          ) {
+            flushList();
+
+            html += `
+      <div class="mt-8 mb-4">
+        <h3 class="relative inline-flex items-center gap-3 text-xl font-bold text-slate-900 dark:text-white">
+          
+          <span class="w-2 h-7 rounded-full bg-gradient-to-b from-blue-500 to-cyan-400 shadow-[0_0_12px_rgba(59,130,246,0.6)]"></span>
+
+          <span class="relative">
+            ${formattedLine.replace(":", "")}
+
+            <span class="absolute left-0 -bottom-1 w-full h-[2px] bg-gradient-to-r from-blue-500/70 to-cyan-400/40 rounded-full"></span>
+          </span>
+        </h3>
+      </div>
+    `;
+            return;
+          }
+
+          // BULLETS
+          if (
+            line.startsWith("-") ||
+            line.startsWith("*") ||
+            line.startsWith("•")
+          ) {
+            listItems.push(formattedLine.replace(/^[-*•]\s?/, ""));
+            return;
+          }
+
+          // QUOTES
+          if (line.startsWith(">")) {
+            flushList();
+
+            html += `
+      <blockquote class="border-l-4 border-blue-500 bg-blue-50/60 dark:bg-blue-950/20 rounded-r-xl px-4 py-3 my-4 text-slate-700 dark:text-slate-300 italic">
+        ${formattedLine.replace(/^>\s?/, "")}
+      </blockquote>
+    `;
+            return;
+          }
+
+          // CODE
+          if (line.includes("`")) {
+            flushList();
+
+            const formatted = safeLine.replace(
+              /`(.*?)`/g,
+              `<code class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-pink-500 text-sm">$1</code>`,
+            );
+
+            html += `
+      <p class="leading-relaxed text-slate-700 dark:text-slate-300 my-3">
+        ${formatted}
+      </p>
+    `;
+            return;
+          }
+
+          // NORMAL PARAGRAPH
+          flushList();
+
+          html += `
+    <p class="leading-8 text-[15.8px] font-[425] tracking-[0.01em] text-slate-700 dark:text-slate-300 my-3">
+      ${formattedLine}
+    </p>
+  `;
+        });
+        flushList();
+
+        return `
+    <div class="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.08)] p-6 md:p-8">
+
+      <!-- Glow -->
+      <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-cyan-500/5 pointer-events-none"></div>
+
+      <!-- Content -->
+      <div class="relative z-10">
+        ${html}
+      </div>
+
+    </div>
+  `;
+      }
+      function parseIntent(str) {
+        const val = str.trim().toLowerCase();
+        if (!val) return null;
+
+        // 1. Calculator Mode (Handled locally for 0ms latency)
+        if (/^[0-9+\-*/().\s]+$/.test(val) && /[+\-*/]/.test(val)) {
+          try {
+            const res = new Function(`return ${val}`)();
+            return {
+              mode: "🧮 Calculator",
+              out: `Result: ${res}`,
+              isLocal: true,
+            };
+          } catch (e) {}
+        }
+        // 2. Converter Mode
+        if (
+          /\b(to|in|convert)\b/.test(val) &&
+          /\b(cm|inch|kg|lbs|usd|eur|miles|km|c|f)\b/.test(val)
+        ) {
+          return {
+            mode: "🔄 Converter",
+            isLocal: false,
+            systemPrompt:
+              "You are an instant unit and currency converter. Output ONLY the converted calculation and a tiny structural breakdown. Be hyper-concise.",
+          };
+        }
+        // 3. Planner Mode
+        if (/\b(plan|schedule|todo|steps|routine|itinerary)\b/.test(val)) {
+          return {
+            mode: "📋 Planner",
+            isLocal: false,
+            systemPrompt:
+              "You are an expert project planner. Break down the user's request into a clean, actionable, step-by-step structural plan using clear bullet points. No conversational introduction fluff.",
+          };
+        }
+        // 4. Writing Enhancer Mode
+        if (
+          /\b(rewrite|fix|improve|polish|summarize)\b/.test(val) ||
+          val.split(" ").length > 12
+        ) {
+          return {
+            mode: "✍️ Writing Enhancer",
+            isLocal: false,
+            systemPrompt:
+              "You are an elite copyeditor. Rewrite, polish, or summarize the user's text for maximum clarity, stylistic flow, and professional impact. Wrap your primary rewrite option clearly inside quotes.",
+          };
+        }
+        // 5. Idea Generator Mode
+        if (/\b(idea|creative|brainstorm|hook|title)\b/.test(val)) {
+          return {
+            mode: "💡 Idea Generator",
+            isLocal: false,
+            systemPrompt:
+              "You are a creative brainstorming partner. Generate 3 unique, high-potential concepts or hooks based on the user's prompt. Format cleanly with descriptive emojis.",
+          };
+        }
+
+        // 6. Default Explainer Mode
+        return {
+          mode: "🧠 Explainer",
+          isLocal: false,
+          systemPrompt:
+            "You are a concise expert educator. Give structured, non-repetitive answers with clean headings and short paragraphs. Avoid repeating information. Use markdown headings naturally.",
+        };
+      }
+
+      // --- Execute Search & Network Pipelines ---
+      async function triggerSearch(queryText) {
+        if (!queryText.trim()) return;
+        rawInputData = queryText;
+        input.value = queryText;
+
+        const analysis = parseIntent(queryText);
+        if (!analysis) return;
+
+        // Update UI Badge
+        badge.innerText = analysis.mode;
+
+        // Force Show Card Box container instantly
+        card.classList.remove(
+          "hidden",
+          "translate-y-4",
+          "opacity-0",
+          "scale-[0.98]",
+        );
+
+        card.classList.add("translate-y-0", "opacity-100", "scale-100");
+        // Save Query to Local Memory
+        saveToMemory(queryText);
+
+        // Branching logic: Local calculation vs Remote Network request
+        if (analysis.isLocal) {
+          output.innerHTML = formatNiceCard(analysis.out);
+          return;
+        }
+
+        // Show fluid pulsing loading state
+        output.innerHTML = `
+<div class="space-y-4 animate-pulse">
+
+  <div class="h-6 w-48 rounded bg-blue-200/50 dark:bg-blue-900/40"></div>
+
+  <div class="space-y-2">
+    <div class="h-4 rounded bg-slate-200 dark:bg-slate-800"></div>
+    <div class="h-4 rounded bg-slate-200 dark:bg-slate-800 w-11/12"></div>
+    <div class="h-4 rounded bg-slate-200 dark:bg-slate-800 w-9/12"></div>
+  </div>
+
+  <div class="space-y-2 pt-3">
+    <div class="h-4 rounded bg-slate-200 dark:bg-slate-800"></div>
+    <div class="h-4 rounded bg-slate-200 dark:bg-slate-800 w-10/12"></div>
+  </div>
+
+</div>
+`;
+        try {
+          const aiResponse = await callLLM(analysis.systemPrompt, queryText);
+          output.innerHTML = formatNiceCard(aiResponse);
+        } catch (error) {
+          output.innerHTML = `<span class="text-rose-500 font-medium">⚠️ Error: ${error.message}</span><br><span class="text-xs text-slate-400 block mt-1">Verify your API key config value at the top of the script tag.</span>`;
+          console.error(error);
+        }
+      }
+
+      // --- Memory Handling ---
+      function saveToMemory(q) {
+        let history = JSON.parse(localStorage.getItem(memoryKey)) || [];
+        history = history.filter((item) => item !== q);
+        history.unshift(q);
+        if (history.length > 5) history.pop();
+        localStorage.setItem(memoryKey, JSON.stringify(history));
+        renderChips();
+      }
+
+      function renderChips() {
+        const history = JSON.parse(localStorage.getItem(memoryKey)) || [];
+        memoryContainer.innerHTML = "";
+        history.forEach((item) => {
+          const chip = document.createElement("button");
+          chip.className =
+            "text-xs px-3 py-1.5 rounded-full bg-slate-200/60 dark:bg-slate-800/60 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-600 transition-all duration-300 hover:scale-105 truncate max-w-[150px]";
+          chip.innerText = item;
+          chip.onclick = () => triggerSearch(item);
+          memoryContainer.appendChild(chip);
+        });
+      }
+
+      // --- Event Listeners ---
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") triggerSearch(input.value);
+      });
+
+      // Surprise Mode Templates
+      document.getElementById("surpriseBtn").addEventListener("click", () => {
+        const surprises = [
+          "Plan a morning routine for deep focus work",
+          "150 lbs to kg",
+          "Rewrite: This product is super cool and fast and simple",
+          "Ideas for a viral micro-SaaS concept",
+          "45 * (12 / 3.5)",
+          "Explain Quantum Computing to an 8-year old",
+        ];
+        const chosen = surprises[Math.floor(Math.random() * surprises.length)];
+        triggerSearch(chosen);
+      });
+
+      // Interactive Action Modifiers (Real API Context Scaling)
+      document
+        .getElementById("btnExpand")
+        .addEventListener("click", async () => {
+          const currentText = output.innerText;
+          output.innerHTML = `
+<div class="flex items-center gap-3 text-blue-500 py-6">
+  <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+  <span class="font-medium">Expanding response...</span>
+</div>
+`;
+          try {
+            const expandedInsights = await callLLM(
+              "Take the provided text context and expand cleanly upon it. Introduce deeper context, structural nuance, or logical next steps while maintaining consistent formatting.",
+              currentText,
+            );
+            output.innerHTML = formatNiceCard(
+              currentText + "\n\n" + expandedInsights,
+            );
+          } catch (err) {
+            console.error(err);
+          }
+        });
+
+      document
+        .getElementById("btnSimplify")
+        .addEventListener("click", async () => {
+          const currentText = output.innerText;
+          output.innerHTML = `
+<div class="flex items-center gap-3 text-blue-500 py-6">
+  <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+  <span class="font-medium">Simplifying response...</span>
+</div>
+`;
+          try {
+            const simplifiedVersion = await callLLM(
+              "Condense, synthesize, and simplify the following text into its absolute core essence. Make it ultra-punchy, brief, and scannable.",
+              currentText,
+            );
+            output.innerHTML = formatNiceCard(simplifiedVersion);
+          } catch (err) {
+            console.error(err);
+          }
+        });
+
+      document
+        .getElementById("btnRegen")
+        .addEventListener("click", () => triggerSearch(rawInputData));
+
+      document.getElementById("btnCopy").addEventListener("click", () => {
+        navigator.clipboard.writeText(output.innerText);
+        const origText = document.getElementById("btnCopy").innerText;
+        document.getElementById("btnCopy").innerText = "✅ Copied!";
+        setTimeout(
+          () => (document.getElementById("btnCopy").innerText = origText),
+          1500,
+        );
+      });
+
+      // Dark/Light Mode Toggle
+      document.getElementById("themeToggle").addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+      });
+
+      // Initialize Checks
+      renderChips();
+    </script>
+  </body>
+</html>
